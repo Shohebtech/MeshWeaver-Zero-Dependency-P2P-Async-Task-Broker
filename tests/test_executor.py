@@ -39,3 +39,20 @@ def test_execute_invalid_task():
     assert response["status"] == "failed"
     assert response["result"] is None
     assert response["error"] is not None
+
+def test_deserialization_error_is_reported():
+    response = execute_serialized_task(b"invalid data")
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert response["error"].startswith("Deserialization error:")
+
+
+def test_execution_error_is_reported():
+    data = serialize_task(divide_by_zero)
+    response = execute_serialized_task(data)
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert response["error"].startswith("Execution error:")
+    assert "ZeroDivisionError" in response["error"]

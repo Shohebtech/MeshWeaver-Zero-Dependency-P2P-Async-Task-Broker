@@ -9,6 +9,14 @@ def execute_serialized_task(data):
     try:
         payload = deserialize_task(data)
 
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "result": None,
+            "error": f"Deserialization error: {type(exc).__name__}: {exc}",
+        }
+
+    try:
         func = payload["function"]
         args = payload["args"]
         kwargs = payload["kwargs"]
@@ -25,5 +33,5 @@ def execute_serialized_task(data):
         return {
             "status": "failed",
             "result": None,
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": f"Execution error: {type(exc).__name__}: {exc}",
         }
