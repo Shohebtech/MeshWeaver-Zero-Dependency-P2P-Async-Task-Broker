@@ -11,6 +11,7 @@ from .messages import (
 )
 from .routing_table import RoutingTable
 from .rpc import DEFAULT_TIMEOUT, PendingRequests, RPCTimeout
+from .storage import MISSING, Storage
 
 
 def _read_id(payload: Dict[str, Any], name: str) -> int:
@@ -19,6 +20,16 @@ def _read_id(payload: Dict[str, Any], name: str) -> int:
         return hex_to_id(payload[name])
     except (KeyError, TypeError, ValueError) as e:
         raise MessageError(f"missing or bad {name!r}") from e
+
+
+def _read_ttl(payload: Dict[str, Any]) -> Optional[float]:
+    """The optional TTL of a STORE request. None means 'use the default'."""
+    ttl = payload.get("ttl")
+    if ttl is None:
+        return None
+    if isinstance(ttl, bool) or not isinstance(ttl, (int, float)) or ttl <= 0:
+        raise MessageError("bad ttl")
+    return float(ttl)
 
 
 class DHTProtocol:
@@ -31,7 +42,7 @@ class DHTProtocol:
         self.k = k
         self.routing_table = RoutingTable(node_id, k)
         self.pending = PendingRequests(timeout)
-        self.storage: Dict[int, Any] = {}  
+        self.storage = Storage()  # values expire; see storage.py
         transport.set_receiver(self.datagram_received)
 
     @property
@@ -42,7 +53,9 @@ class DHTProtocol:
     def close(self) -> None:
         self.transport.close()
 
-    
+    # ------------------------------------------------------------------
+    # Receiving: every datagram that arrives comes through here
+    # ------------------------------------------------------------------
     def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         try:
             msg = decode(data)
@@ -77,14 +90,16 @@ class DHTProtocol:
             key = _read_id(msg.payload, "key")
             if "value" not in msg.payload:
                 raise MessageError("missing value")
-            self.storage[key] = msg.payload["value"]
-            return make_response(msg, self.contact, {"stored": True})
+            ttl = _read_ttl(msg.payload)
+            stored = self.storage.set(key, msg.payload["value"], ttl)
+            return make_response(msg, self.contact, {"stored": stored})
 
         if msg.type == FIND_VALUE:
             key = _read_id(msg.payload, "key")
-            if key in self.storage:
+            value = self.storage.get(key, MISSING)
+            if value is not MISSING:
                 return make_response(msg, self.contact,
-                                     {"found": True, "value": self.storage[key]})
+                                     {"found": True, "value": value})
             return make_response(msg, self.contact,
                                  {"found": False, "contacts": self._closest(key, sender)})
 
@@ -94,7 +109,9 @@ class DHTProtocol:
         found = self.routing_table.find_closest(target, self.k, exclude={asker.node_id})
         return contacts_to_payload(found)
 
-    
+    # ------------------------------------------------------------------
+    # Sending: ask another node something
+    # ------------------------------------------------------------------
     async def _call(self, contact: Contact, msg_type: str,
                     payload: Optional[Dict[str, Any]] = None) -> Optional[Message]:
         request = make_request(msg_type, self.contact, payload)
@@ -117,13 +134,22 @@ class DHTProtocol:
         except MessageError:
             return None
 
-    async def store(self, contact: Contact, key: int, value: Any) -> bool:
-        resp = await self._call(contact, STORE, {"key": id_to_hex(key), "value": value})
+    async def store(self, contact: Contact, key: int, value: Any,
+                    ttl: Optional[float] = None) -> bool:
+        """Ask a peer to keep a value for ttl seconds (None = the peer's default)."""
+        payload: Dict[str, Any] = {"key": id_to_hex(key), "value": value}
+        if ttl is not None:
+            payload["ttl"] = ttl
+        resp = await self._call(contact, STORE, payload)
         return resp is not None and resp.payload.get("stored") is True
 
     async def find_value(self, contact: Contact,
                          key: int) -> Optional[Tuple[bool, Any, List[Contact]]]:
-        
+        """
+        None            -> peer did not answer
+        (True, value, [])   -> peer had the value
+        (False, None, contacts) -> peer did not have it; here are closer peers
+        """
         resp = await self._call(contact, FIND_VALUE, {"key": id_to_hex(key)})
         if resp is None:
             return None
