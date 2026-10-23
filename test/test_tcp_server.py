@@ -81,6 +81,18 @@ class TestTCPServer(unittest.IsolatedAsyncioTestCase):
         data = await asyncio.wait_for(reader.readline(), timeout=2)
         self.assertEqual(data, b"")
 
+    
+    async def test_json_array_returns_error(self):
+        response = await self.send_message(b"[]\n")
+        result = json.loads(response.decode())
+
+        self.assertEqual(result["type"], "error")
+        self.assertEqual(
+            result["message"],
+            "Message must be a JSON object",
+        )
+
+
 
 if __name__ == "__main__":
     unittest.main()

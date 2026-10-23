@@ -24,19 +24,27 @@ async def handle_client(reader, writer):
                     "type": "error",
                     "message": "Invalid JSON message",
                 }
+           
             else:
-                print(f"Received from {peer}: {message}")
-
-                if message.get("type") == "ping":
-                    response = {
-                        "type": "pong",
-                        "message": "TCP connection successful",
-                    }
-                else:
+                if not isinstance(message, dict):
                     response = {
                         "type": "error",
-                        "message": "Unsupported message type",
+                        "message": "Message must be a JSON object",
                     }
+                else:
+                    print(f"Received from {peer}: {message}")
+
+                    if message.get("type") == "ping":
+                        response = {
+                            "type": "pong",
+                            "message": "TCP connection successful",
+                        }
+                    else:
+                        response = {
+                            "type": "error",
+                            "message": "Unsupported message type",
+                        }
+
 
             writer.write(
                 (json.dumps(response) + "\n").encode("utf-8")
