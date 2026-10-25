@@ -131,3 +131,26 @@ def test_task_state_rejects_whitespace_task_id():
     """A whitespace-only task ID should raise ValueError."""
     with pytest.raises(ValueError, match="Task ID cannot be empty"):
         TaskState("   ")
+
+def test_completed_task_can_be_marked_failed():
+    """Verify that failure clears a previously stored result."""
+    task = TaskState("task-014")
+
+    task.mark_completed(100)
+    task.mark_failed("A later processing error occurred")
+
+    assert task.status == TaskStatus.FAILED
+    assert task.result is None
+    assert task.error == "A later processing error occurred"
+
+
+def test_failed_task_can_be_marked_completed():
+    """Verify that completion clears a previously stored error."""
+    task = TaskState("task-015")
+
+    task.mark_failed("Temporary error")
+    task.mark_completed(42)
+
+    assert task.status == TaskStatus.COMPLETED
+    assert task.result == 42
+    assert task.error is None

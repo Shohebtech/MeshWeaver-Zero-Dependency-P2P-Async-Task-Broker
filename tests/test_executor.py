@@ -100,3 +100,52 @@ def test_invalid_payload_includes_execution_time():
     assert "Deserialization error" in response["error"]
     assert isinstance(response["execution_time"], float)
     assert response["execution_time"] >= 0
+
+def test_task_with_no_arguments():
+    """Verify that a task without arguments executes successfully."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def get_message():
+        return "Task completed"
+
+    payload = serialize_task(get_message)
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "completed"
+    assert response["result"] == "Task completed"
+    assert response["error"] is None
+    assert response["execution_time"] >= 0
+
+
+def test_task_with_keyword_arguments():
+    """Verify execution with keyword arguments."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def multiply(a, b=1):
+        return a * b
+
+    payload = serialize_task(multiply, (5,), {"b": 4})
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "completed"
+    assert response["result"] == 20
+    assert response["error"] is None
+
+
+def test_task_function_raises_runtime_error():
+    """Verify that runtime errors are returned in the response."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def failing_task():
+        raise RuntimeError("Intentional failure")
+
+    payload = serialize_task(failing_task)
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert "RuntimeError" in response["error"]
+    assert response["execution_time"] >= 0
