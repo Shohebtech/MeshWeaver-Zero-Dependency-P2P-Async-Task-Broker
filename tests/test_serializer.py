@@ -108,3 +108,25 @@ def test_round_trip_preserves_empty_arguments():
     assert payload["args"] == ()
     assert payload["kwargs"] == {}
     assert payload["function"]() == "MeshWeaver ready"
+
+def test_serialize_rejects_non_callable_function():
+    with pytest.raises(TypeError, match="Task function must be callable"):
+        serialize_task(123)
+
+
+def test_serialize_rejects_invalid_args():
+    with pytest.raises(TypeError, match="Task args must be a tuple or list"):
+        serialize_task(lambda: 10, args="invalid")
+
+
+def test_serialize_rejects_invalid_kwargs():
+    with pytest.raises(TypeError, match="Task kwargs must be a dictionary"):
+        serialize_task(lambda: 10, kwargs=["invalid"])
+
+
+def test_serialize_accepts_list_arguments():
+    payload = serialize_task(lambda x: x * 2, args=[5])
+    restored = deserialize_task(payload)
+
+    assert restored["args"] == (5,)
+    assert restored["function"](*restored["args"]) == 10

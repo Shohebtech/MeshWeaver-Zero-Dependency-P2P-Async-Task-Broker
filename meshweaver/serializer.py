@@ -5,8 +5,17 @@ import cloudpickle
 
 def serialize_task(func, args=(), kwargs=None):
     """Serialize a Python function and its arguments."""
+    if not callable(func):
+        raise TypeError("Task function must be callable")
+
+    if not isinstance(args, (tuple, list)):
+        raise TypeError("Task args must be a tuple or list")
+
     if kwargs is None:
         kwargs = {}
+
+    if not isinstance(kwargs, dict):
+        raise TypeError("Task kwargs must be a dictionary")
 
     payload = {
         "function": func,
