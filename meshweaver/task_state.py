@@ -14,6 +14,12 @@ class TaskState:
     """Track the status and result of a task."""
 
     def __init__(self, task_id):
+        if not isinstance(task_id, str):
+            raise TypeError("Task ID must be a string")
+
+        if not task_id.strip():
+            raise ValueError("Task ID cannot be empty")
+
         self.task_id = task_id
         self.status = TaskStatus.SUBMITTED
         self.result = None
@@ -33,7 +39,6 @@ class TaskState:
         self.result = None
 
     def to_dict(self):
-        """Return task information as a dictionary."""
         return {
             "task_id": self.task_id,
             "status": self.status.value,
