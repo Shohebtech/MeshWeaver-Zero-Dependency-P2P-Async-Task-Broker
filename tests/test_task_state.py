@@ -49,3 +49,44 @@ def test_task_state_to_dict():
     assert data["status"] == "completed"
     assert data["result"] == 100
     assert data["error"] is None
+    
+def test_task_can_transition_from_submitted_to_running():
+    task = TaskState("task-006")
+
+    assert task.status == TaskStatus.SUBMITTED
+
+    task.mark_running()
+
+    assert task.status == TaskStatus.RUNNING
+
+
+def test_completed_task_stores_result():
+    task = TaskState("task-007")
+
+    task.mark_completed({"answer": 42})
+
+    assert task.status == TaskStatus.COMPLETED
+    assert task.result == {"answer": 42}
+    assert task.error is None
+
+
+def test_failed_task_stores_error_message():
+    task = TaskState("task-008")
+
+    task.mark_failed("Task execution failed")
+
+    assert task.status == TaskStatus.FAILED
+    assert task.error == "Task execution failed"
+    assert task.result is None
+
+
+def test_task_state_dictionary_updates_after_failure():
+    task = TaskState("task-009")
+
+    task.mark_failed("Connection error")
+    data = task.to_dict()
+
+    assert data["task_id"] == "task-009"
+    assert data["status"] == "failed"
+    assert data["error"] == "Connection error"
+    assert data["result"] is None
