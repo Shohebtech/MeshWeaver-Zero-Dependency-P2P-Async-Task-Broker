@@ -47,7 +47,6 @@ def test_deserialization_error_is_reported():
     assert response["result"] is None
     assert response["error"].startswith("Deserialization error:")
 
-
 def test_execution_error_is_reported():
     data = serialize_task(divide_by_zero)
     response = execute_serialized_task(data)
@@ -56,3 +55,48 @@ def test_execution_error_is_reported():
     assert response["result"] is None
     assert response["error"].startswith("Execution error:")
     assert "ZeroDivisionError" in response["error"]
+
+def test_successful_task_includes_execution_time():
+    """A successful task should report a non-negative duration."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def add(a, b):
+        return a + b
+
+    payload = serialize_task(add, (10, 20))
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "completed"
+    assert response["result"] == 30
+    assert isinstance(response["execution_time"], float)
+    assert response["execution_time"] >= 0
+
+
+def test_failed_task_includes_execution_time():
+    """A failed task should also report its duration."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def failing_task():
+        raise ValueError("Test failure")
+
+    payload = serialize_task(failing_task)
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "failed"
+    assert "ValueError" in response["error"]
+    assert isinstance(response["execution_time"], float)
+    assert response["execution_time"] >= 0
+
+
+def test_invalid_payload_includes_execution_time():
+    """A deserialization failure should report its duration."""
+    from meshweaver.executor import execute_serialized_task
+
+    response = execute_serialized_task(b"invalid payload")
+
+    assert response["status"] == "failed"
+    assert "Deserialization error" in response["error"]
+    assert isinstance(response["execution_time"], float)
+    assert response["execution_time"] >= 0
