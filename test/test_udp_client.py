@@ -76,6 +76,30 @@ class TestUDPClient(unittest.IsolatedAsyncioTestCase):
         )
         transport.close.assert_called_once()
 
+    async def test_error_received_logs_error(self):
+        from networking.udp_client import UDPClient
+
+        client = UDPClient(asyncio.get_running_loop().create_future())
+
+        with patch("builtins.print") as mock_print:
+            client.error_received(OSError("Network unreachable"))
+
+        mock_print.assert_called_once_with(
+            "UDP client error: Network unreachable"
+        )
+
+    async def test_connection_lost_logs_error(self):
+        from networking.udp_client import UDPClient
+
+        client = UDPClient(asyncio.get_running_loop().create_future())
+
+        with patch("builtins.print") as mock_print:
+            client.connection_lost(ConnectionError("Connection lost"))
+
+        mock_print.assert_called_once_with(
+            "UDP client connection lost: Connection lost"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
