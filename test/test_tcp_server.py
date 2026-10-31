@@ -48,6 +48,45 @@ class TestTCPServer(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["type"], "pong")
 
+    
+    async def test_multiple_messages_on_same_connection(self):
+        reader, writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+
+        try:
+            first_message = json.dumps(
+                {"type": "ping"}
+            ).encode() + b"\n"
+
+            second_message = json.dumps(
+                {"type": "ping"}
+            ).encode() + b"\n"
+
+            writer.write(first_message + second_message)
+            await writer.drain()
+
+            first_response = await asyncio.wait_for(
+                reader.readline(),
+                timeout=2,
+            )
+
+            second_response = await asyncio.wait_for(
+                reader.readline(),
+                timeout=2,
+            )
+
+            first_result = json.loads(first_response.decode())
+            second_result = json.loads(second_response.decode())
+
+            self.assertEqual(first_result["type"], "pong")
+            self.assertEqual(second_result["type"], "pong")
+
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
     async def test_unsupported_message_returns_error(self):
         request = json.dumps(
             {"type": "hello"}
