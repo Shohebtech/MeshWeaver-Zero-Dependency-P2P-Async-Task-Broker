@@ -65,6 +65,7 @@ class DHTNode:
                  k: int = K,
                  maintenance: bool = True,
                  node_id: Optional[int] = None,
+                 transport_wrapper: Optional[Callable[[Any], Any]] = None,
                  **maintenance_options: Any):
         self._host = host
         self._ports = list(ports)
@@ -75,6 +76,7 @@ class DHTNode:
         self._k = k
         self._run_maintenance = maintenance
         self._fixed_id = node_id
+        self._transport_wrapper = transport_wrapper
         self._maintenance_options = maintenance_options
         self._protocol: Optional[DHTProtocol] = None
         self._maintenance: Optional[Maintenance] = None
@@ -90,6 +92,8 @@ class DHTNode:
         if self._protocol is not None:
             raise RuntimeError("node is already started")
         transport = await open_transport(self._host, self._ports)
+        if self._transport_wrapper is not None:
+            transport = self._transport_wrapper(transport)
         node_id = generate_node_id() if self._fixed_id is None else self._fixed_id
         protocol = DHTProtocol(node_id, transport, k=self._k, timeout=self._rpc_timeout)
         protocol.routing_table = ObservedRoutingTable(
