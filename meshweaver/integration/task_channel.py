@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import struct
+import ssl
 from typing import Any, Awaitable, Callable, Optional, Tuple, Union
 
 Address = Tuple[str, int]
@@ -43,11 +44,12 @@ class TaskServer:
     """
 
     def __init__(self, handler: Handler, host: str = "127.0.0.1", port: int = 0,
-                 max_bytes: int = MAX_FRAME_BYTES, read_timeout: float = 10.0):
+                 max_bytes: int = MAX_FRAME_BYTES, read_timeout: float = 10.0, ssl_context: Optional[ssl.SSLContext] = None):
         self._handler = handler
         self.host, self.port = host, port
         self.max_bytes = max_bytes
         self.read_timeout = read_timeout
+        self._ssl = ssl_context
         self._server: Optional[asyncio.AbstractServer] = None
 
     @property
@@ -60,7 +62,7 @@ class TaskServer:
     async def start(self) -> None:
         if self._server is not None:
             raise RuntimeError("server is already started")
-        self._server = await asyncio.start_server(self._serve, self.host, self.port)
+        self._server = await asyncio.start_server(self._serve, self.host, self.port, ssl=self._ssl)
 
     async def stop(self) -> None:
         server, self._server = self._server, None
@@ -90,13 +92,13 @@ class TaskServer:
 
 
 async def send_task(host: str, port: int, data: bytes, timeout: float = 10.0,
-                    max_bytes: int = MAX_FRAME_BYTES) -> bytes:
+                    max_bytes: int = MAX_FRAME_BYTES, ssl_context: Optional[ssl.SSLContext] = None) -> bytes:
     """Send bytes to a TaskServer and return its reply. Raises TaskChannelError on any failure."""
     if not isinstance(data, bytes) or not 0 < len(data) <= max_bytes:
         raise ValueError(f"data must be 1 to {max_bytes} bytes")
     writer: Optional[asyncio.StreamWriter] = None
     try:
-        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout)
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port, ssl=ssl_context), timeout)
         writer.write(_frame(data))
         await writer.drain()
         return await _read_frame(reader, max_bytes, timeout)
