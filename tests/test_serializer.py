@@ -130,3 +130,31 @@ def test_serialize_accepts_list_arguments():
 
     assert restored["args"] == (5,)
     assert restored["function"](*restored["args"]) == 10
+
+def test_serialize_nested_function_with_closure():
+    """Verify that cloudpickle can serialize a nested function with a closure."""
+
+    def create_multiplier(factor):
+        def multiply(number):
+            return number * factor
+
+        return multiply
+
+    # Create a nested function with a captured variable
+    multiply_by_3 = create_multiplier(3)
+
+    # Serialize the function and its argument
+    data = serialize_task(multiply_by_3, args=(7,))
+
+    # Deserialize the task
+    payload = deserialize_task(data)
+
+    # Execute the restored function
+    result = payload["function"](
+        *payload["args"],
+        **payload["kwargs"]
+    )
+
+    assert result == 21
+    assert payload["args"] == (7,)
+    assert payload["kwargs"] == {}
