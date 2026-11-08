@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · MeshWeaver</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/logo.svg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-page="{{ active }}" data-refresh="{{ refresh_ms }}" data-interval="{{ gossip_interval }}">
+  <aside class="side">
+    <div class="brand"><img src="{{ url_for('static', filename='images/logo.svg') }}" alt=""><div><b>MeshWeaver</b><span>Peer-to-peer task broker</span></div></div>
+    <nav aria-label="Pages">
+      {% for key, path, label in pages %}<a href="{{ path }}" class="{{ 'active' if key == active else '' }}">{{ label }}</a>{% endfor %}
+    </nav>
+    <div class="node-card"><b>{{ node_name }}</b>Gossip UDP port {{ node_port }}</div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <h1>{{ title }}</h1>
+      <div class="live" id="live"><span class="dot"></span><span id="live-text">Connecting…</span></div>
+    </header>
+    {% block content %}{% endblock %}
+  </main>
+  <!-- Chart.js: local copy first (static/js/vendor/chart.umd.min.js), CDN as fallback -->
+  <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"
+          onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';document.head.appendChild(s);"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

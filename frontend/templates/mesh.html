@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid g2">
+  <section class="panel"><h2>Network topology <span class="sub" id="topo-sub"></span></h2>
+    <svg class="topo" id="topo" viewBox="0 0 560 360" role="img" aria-label="Mesh topology"></svg>
+    <div class="legend"><span><i style="background:#0e9f7a"></i>online</span><span><i style="background:#b87503"></i>stale</span><span><i style="background:#c93a3a"></i>offline</span><span>dashed outline: simulated</span></div>
+  </section>
+  <section class="panel"><h2>Node discovery <span class="badge mock">mock</span></h2><div id="discovery"></div></section>
+</div>
+<section class="panel"><h2>Nodes <input class="filter" data-filter="mesh-table" placeholder="Filter nodes" aria-label="Filter nodes"></h2>
+  <div class="tbl-wrap" id="mesh-table"></div></section>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="tiles" id="tiles"></div>
+<div class="grid g2">
+  <section class="panel"><h2>Least-loaded online node <span class="sub">from the gossip load table</span></h2><div id="least"></div></section>
+  <section class="panel"><h2>Recent changes</h2><ul class="events" id="recent"></ul></section>
+</div>
+<section class="panel"><h2>CPU by node <span class="sub">live from gossip</span></h2><div id="mini-load"></div></section>
+<section class="panel"><h2>Where this data comes from</h2><div id="sources"></div></section>
+{% endblock %}

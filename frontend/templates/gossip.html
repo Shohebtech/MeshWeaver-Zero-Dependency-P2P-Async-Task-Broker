@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="warnings"></div>
+<div class="grid g-top">
+  <section class="panel"><h2>This node <span class="sub" id="self-sub"></span></h2><div id="self-panel"></div></section>
+  <section class="panel"><h2>Gossip cycle</h2>
+    <div class="ring-wrap">
+      <svg class="ring" id="ring" viewBox="0 0 120 120" role="img" aria-label="Time until next gossip broadcast">
+        <circle class="bg" cx="60" cy="60" r="52" fill="none" stroke-width="8"/>
+        <circle class="fg" cx="60" cy="60" r="52" fill="none" stroke-width="8" transform="rotate(-90 60 60)" stroke-dasharray="326.7" stroke-dashoffset="0"/>
+        <text x="60" y="60" id="ring-num">–</text><text class="small" x="60" y="78">next broadcast</text>
+      </svg>
+      <dl class="kv" id="cycle-kv"></dl>
+    </div></section>
+  <section class="panel"><h2>Least-loaded online node</h2><div id="least-panel"></div></section>
+</div>
+<section class="panel"><h2>Node-wise load table <input class="filter" data-filter="load-table" placeholder="Filter nodes" aria-label="Filter nodes"></h2>
+  <div class="tbl-wrap" id="load-table"></div></section>
+<div class="grid g2">
+  <section class="panel"><h2>CPU usage <span class="sub">last 10 minutes max</span></h2><div class="chart-box"><canvas id="cpuChart"></canvas></div></section>
+  <section class="panel"><h2>RAM usage</h2><div class="chart-box"><canvas id="ramChart"></canvas></div></section>
+</div>
+<div class="grid g2">
+  <section class="panel"><h2>Heartbeat status <span class="sub" id="hb-sub"></span></h2><div class="tbl-wrap" id="hb-table"></div></section>
+  <section class="panel"><h2>Gossip update history</h2><ul class="events" id="history"></ul></section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/charts.js') }}"></script>{% endblock %}
