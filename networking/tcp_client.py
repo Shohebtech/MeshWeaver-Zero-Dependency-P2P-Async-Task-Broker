@@ -1,10 +1,15 @@
 
 import asyncio
-import json
+
+from networking.protocol import create_message, encode_message, decode_message
+
 
 SERVER_HOST = "127.0.0.1"
 SERVER_PORT = 25000
 TIMEOUT = 3
+
+NODE_ID = "node_client"
+SERVER_ID = "node_server"
 
 
 async def main():
@@ -15,15 +20,24 @@ async def main():
         )
 
         try:
-            request = {"type": "ping"}
+            # Create a standard protocol message
+            request = create_message(
+                message_type="PING",
+                sender_id=NODE_ID,
+                receiver_id=SERVER_ID,
+            )
+
+            # Encode the message into JSON
+            encoded_request = encode_message(request)
 
             writer.write(
-                (json.dumps(request) + "\n").encode("utf-8")
+                (encoded_request + "\n").encode("utf-8")
             )
             await writer.drain()
 
             print(f"Sent request: {request}")
 
+            # Wait for the server response
             data = await asyncio.wait_for(
                 reader.readline(),
                 timeout=TIMEOUT,
@@ -33,13 +47,17 @@ async def main():
                 print("Server closed the connection without a response.")
                 return
 
-            response = json.loads(data.decode("utf-8"))
+            # Decode and validate the response
+            response = decode_message(data.decode("utf-8"))
+
             print(f"Received response: {response}")
 
-            if response.get("type") == "pong":
+            if response.get("type") == "PONG":
                 print("Success: TCP communication completed.")
+            elif response.get("type") == "ERROR":
+                print(f"Server error: {response.get('payload')}")
             else:
-                print("The server returned an error response.")
+                print("Unexpected response received.")
 
         finally:
             writer.close()
@@ -47,9 +65,11 @@ async def main():
 
     except asyncio.TimeoutError:
         print("Timeout: TCP server did not respond in time.")
+
     except ConnectionRefusedError:
         print("Connection refused: start the TCP server first.")
-    except (ConnectionError, json.JSONDecodeError) as exc:
+
+    except (ConnectionError, UnicodeDecodeError, ValueError) as exc:
         print(f"Communication failed: {exc}")
 
 

@@ -1,13 +1,33 @@
 
 import asyncio
-import json
+
+from networking.protocol import (
+    create_message,
+    encode_message,
+    decode_message,
+)
+
 
 HOST = "127.0.0.1"
 PORT = 25000
 
+NODE_ID = "node_server"
+
+
+def create_error_response(receiver_id, error_message):
+    return create_message(
+        message_type="ERROR",
+        sender_id=NODE_ID,
+        receiver_id=receiver_id,
+        payload={
+            "message": error_message,
+        },
+    )
+
 
 async def handle_client(reader, writer):
     peer = writer.get_extra_info("peername")
+
     print(f"TCP client connected: {peer}")
 
     try:
@@ -18,44 +38,55 @@ async def handle_client(reader, writer):
                 break
 
             try:
-                message = json.loads(data.decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                response = {
-                    "type": "error",
-                    "message": "Invalid JSON message",
-                }
-           
+                # Decode and validate incoming message
+                message = decode_message(data.decode("utf-8"))
+
+            except (UnicodeDecodeError, ValueError) as exc:
+                response = create_error_response(
+                    receiver_id="unknown",
+                    error_message=str(exc),
+                )
+
             else:
-                if not isinstance(message, dict):
-                    response = {
-                        "type": "error",
-                        "message": "Message must be a JSON object",
-                    }
-                else:
-                    print(f"Received from {peer}: {message}")
+                print(f"Received from {peer}: {message}")
 
-                    if message.get("type") == "ping":
-                        response = {
-                            "type": "pong",
+                message_type = message["type"]
+                sender_id = message["sender_id"]
+
+                if message_type == "PING":
+
+                    response = create_message(
+                        message_type="PONG",
+                        sender_id=NODE_ID,
+                        receiver_id=sender_id,
+                        payload={
                             "message": "TCP connection successful",
-                        }
-                    else:
-                        response = {
-                            "type": "error",
-                            "message": "Unsupported message type",
-                        }
+                            "request_message_id": message["message_id"],
+                        },
+                    )
 
+                else:
+                    response = create_error_response(
+                        receiver_id=sender_id,
+                        error_message="Unsupported message type",
+                    )
+
+            # Encode response using the common protocol
+            encoded_response = encode_message(response)
 
             writer.write(
-                (json.dumps(response) + "\n").encode("utf-8")
+                (encoded_response + "\n").encode("utf-8")
             )
+
             await writer.drain()
 
     except (ConnectionError, asyncio.CancelledError):
         raise
+
     finally:
         writer.close()
         await writer.wait_closed()
+
         print(f"TCP client disconnected: {peer}")
 
 
@@ -69,6 +100,7 @@ async def main():
     addresses = ", ".join(
         str(sock.getsockname()) for sock in server.sockets
     )
+
     print(f"TCP server listening on {addresses}")
 
     async with server:
@@ -78,5 +110,6 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
+
     except KeyboardInterrupt:
         print("\nTCP server stopped")
