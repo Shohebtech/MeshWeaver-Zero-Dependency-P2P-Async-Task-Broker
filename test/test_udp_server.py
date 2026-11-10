@@ -4,6 +4,7 @@ import socket
 import unittest
 
 from networking.udp_server import UDPServer
+from networking.protocol import create_message, encode_message, decode_message
 
 
 class TestUDPServer(unittest.IsolatedAsyncioTestCase):
@@ -32,36 +33,71 @@ class TestUDPServer(unittest.IsolatedAsyncioTestCase):
     async def test_ping_receives_pong(self):
         loop = asyncio.get_running_loop()
 
+        # Create a valid PING protocol message
+        request = create_message(
+            "PING",
+            "test_client",
+            "node_server",
+        )
+
+        # Send the encoded message to the UDP server
         await loop.sock_sendto(
             self.client_socket,
-            b"PING",
+            encode_message(request).encode("utf-8"),
             self.server_address,
         )
 
+        # Receive the server response
         response, _ = await asyncio.wait_for(
             loop.sock_recvfrom(self.client_socket, 1024),
             timeout=2,
         )
 
-        self.assertEqual(response, b"PONG")
+        # Decode the response
+        message = decode_message(response.decode("utf-8"))
 
-    
+        # Verify the PONG response
+        self.assertEqual(message["type"], "PONG")
+        self.assertEqual(message["sender_id"], "node_server")
+        self.assertEqual(message["receiver_id"], "test_client")
+
+        # Verify that the response belongs to the original request
+        self.assertEqual(
+            message["payload"]["request_message_id"],
+            request["message_id"],
+        )
+
     async def test_unexpected_message_receives_error_response(self):
         loop = asyncio.get_running_loop()
 
+        # Create a valid but unsupported TASK message
+        request = create_message(
+            "TASK",
+            "test_client",
+            "node_server",
+            {"task": "example"},
+        )
+
         await loop.sock_sendto(
             self.client_socket,
-            b"HELLO",
+            encode_message(request).encode("utf-8"),
             self.server_address,
         )
 
+        # Receive the server response
         response, _ = await asyncio.wait_for(
             loop.sock_recvfrom(self.client_socket, 1024),
             timeout=2,
         )
 
-        self.assertEqual(response, b"UNKNOWN_MESSAGE")
+        # Decode and verify the ERROR response
+        message = decode_message(response.decode("utf-8"))
 
+        self.assertEqual(message["type"], "ERROR")
+        self.assertEqual(
+            message["payload"]["message"],
+            "Unsupported message type",
+        )
 
 
 if __name__ == "__main__":

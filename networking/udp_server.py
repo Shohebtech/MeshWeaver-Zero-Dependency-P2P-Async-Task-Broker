@@ -1,29 +1,75 @@
 
 import asyncio
 
+from networking.protocol import (
+    create_message,
+    encode_message,
+    decode_message,
+)
+
 
 class UDPServer(asyncio.DatagramProtocol):
+
     def connection_made(self, transport):
         self.transport = transport
+
         print("UDP server is running on 127.0.0.1:9999")
 
     def datagram_received(self, data, addr):
         try:
-            message = data.decode("utf-8").strip()
-        except UnicodeDecodeError:
-            print(f"Invalid UTF-8 message received from {addr}")
-            self.transport.sendto(b"INVALID_MESSAGE", addr)
+            message = decode_message(data.decode("utf-8"))
+
+        except (UnicodeDecodeError, ValueError) as exc:
+            print(f"Invalid message received from {addr}: {exc}")
+
+            response = create_message(
+                "ERROR",
+                "node_server",
+                "unknown",
+                {
+                    "message": "Invalid UDP message",
+                },
+            )
+
+            self.send_response(response, addr)
             return
 
         print(f"Received from {addr}: {message}")
 
-        if message == "PING":
-            response = b"PONG"
-        else:
-            response = b"UNKNOWN_MESSAGE"
+        message_type = message["type"]
+        sender_id = message["sender_id"]
 
-        self.transport.sendto(response, addr)
-        print(f"Sent {response.decode()} to {addr}")
+        if message_type == "PING":
+
+            response = create_message(
+                "PONG",
+                "node_server",
+                sender_id,
+                {
+                    "message": "UDP connection successful",
+                    "request_message_id": message["message_id"],
+                },
+            )
+
+        else:
+
+            response = create_message(
+                "ERROR",
+                "node_server",
+                sender_id,
+                {
+                    "message": "Unsupported message type",
+                },
+            )
+
+        self.send_response(response, addr)
+
+    def send_response(self, response, addr):
+        encoded_response = encode_message(response).encode("utf-8")
+
+        self.transport.sendto(encoded_response, addr)
+
+        print(f"Sent {response['type']} to {addr}")
 
     def error_received(self, exc):
         print(f"UDP transport error: {exc}")
@@ -46,6 +92,7 @@ async def main():
     try:
         print("Press Ctrl+C to stop the server.")
         await asyncio.Future()
+
     finally:
         transport.close()
 
@@ -53,5 +100,6 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
+
     except KeyboardInterrupt:
         print("\nUDP server stopped")

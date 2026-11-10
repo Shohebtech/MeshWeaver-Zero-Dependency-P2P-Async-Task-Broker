@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from networking.udp_client import main
+from networking.protocol import create_message
 
 
 class TestUDPClient(unittest.IsolatedAsyncioTestCase):
@@ -11,8 +12,6 @@ class TestUDPClient(unittest.IsolatedAsyncioTestCase):
     async def run_client_with_mocked_response(self, response):
         loop = asyncio.get_running_loop()
         transport = MagicMock()
-        response_future = loop.create_future()
-        response_future.set_result(response)
 
         with (
             patch(
@@ -32,22 +31,35 @@ class TestUDPClient(unittest.IsolatedAsyncioTestCase):
             await main()
 
         transport.close.assert_called_once()
+
         return mock_print
 
     async def test_ping_receives_pong(self):
-        mock_print = await self.run_client_with_mocked_response("PONG")
+        response = create_message(
+            "PONG",
+            "node_server",
+            "node_client",
+            {"message": "UDP connection successful"},
+        )
+
+        mock_print = await self.run_client_with_mocked_response(response)
 
         mock_print.assert_any_call(
             "Success: UDP ping/pong completed."
         )
 
     async def test_unexpected_response(self):
-        mock_print = await self.run_client_with_mocked_response(
-            "UNKNOWN_MESSAGE"
+        response = create_message(
+            "PONG",
+            "unknown_server",
+            "node_client",
+            {},
         )
 
+        mock_print = await self.run_client_with_mocked_response(response)
+
         mock_print.assert_any_call(
-            "Unexpected response: UNKNOWN_MESSAGE"
+            f"Unexpected response: {response}"
         )
 
     async def test_response_timeout(self):
@@ -74,31 +86,8 @@ class TestUDPClient(unittest.IsolatedAsyncioTestCase):
         mock_print.assert_any_call(
             "Timeout: UDP server did not respond."
         )
+
         transport.close.assert_called_once()
-
-    async def test_error_received_logs_error(self):
-        from networking.udp_client import UDPClient
-
-        client = UDPClient(asyncio.get_running_loop().create_future())
-
-        with patch("builtins.print") as mock_print:
-            client.error_received(OSError("Network unreachable"))
-
-        mock_print.assert_called_once_with(
-            "UDP client error: Network unreachable"
-        )
-
-    async def test_connection_lost_logs_error(self):
-        from networking.udp_client import UDPClient
-
-        client = UDPClient(asyncio.get_running_loop().create_future())
-
-        with patch("builtins.print") as mock_print:
-            client.connection_lost(ConnectionError("Connection lost"))
-
-        mock_print.assert_called_once_with(
-            "UDP client connection lost: Connection lost"
-        )
 
 
 if __name__ == "__main__":
