@@ -6,7 +6,7 @@ import cloudpickle
 
 from meshweaver.serializer import serialize_task
 from meshweaver.executor import execute_serialized_task
-
+from meshweaver.security import generate_signature, verify_signature
 
 HEADER_SIZE = 8
 MAX_MESSAGE_SIZE = 64 * 1024 * 1024
@@ -52,21 +52,32 @@ def receive_message(connection):
     return receive_exact(connection, message_size)
 
 
-def handle_client(connection):
-    """Receive, execute, and return one task."""
+def handle_client(connection, secret_key):
+    """Receive, verify, execute, and return one task."""
+
     task_data = receive_message(connection)
+    signature = receive_message(connection)
 
-    # Execute the received serialized task.
-    response = execute_serialized_task(task_data)
+    # Verify before executing or deserializing the task.
+    if not verify_signature(task_data, signature, secret_key):
+        response = {
+            "status": "failed",
+            "result": None,
+            "error": "Security error: Invalid task signature",
+            "execution_time": 0.0,
+        }
+    else:
+        response = execute_serialized_task(task_data)
 
-    # Serialize the execution response.
+    # Return the execution response.
     response_data = cloudpickle.dumps(response)
-
     send_message(connection, response_data)
 
 
-def serve_once(host="127.0.0.1", port=5000):
-    """Start a worker that handles one remote task."""
+def serve_once(host="127.0.0.1", port=5000, secret_key=None):
+    if not isinstance(secret_key, bytes) or not secret_key:
+        raise ValueError("A non-empty bytes secret key is required")
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((host, port))
@@ -78,17 +89,24 @@ def serve_once(host="127.0.0.1", port=5000):
 
         with connection:
             print("Connected by:", address)
-            handle_client(connection)
+            handle_client(connection, secret_key)
 
         print("Task execution completed.")
 
 
-def submit_task(host, port, func, args=(), kwargs=None):
-    """Send a task to a worker and receive its result."""
+def submit_task(host, port, func, args=(), kwargs=None, secret_key=None):
+    """Sign a task, send it to a worker, and receive its result."""
+
+    if not isinstance(secret_key, bytes) or not secret_key:
+        raise ValueError("A non-empty bytes secret key is required")
+
     task_data = serialize_task(func, args, kwargs)
+    signature = generate_signature(task_data, secret_key)
 
     with socket.create_connection((host, port), timeout=10) as connection:
         send_message(connection, task_data)
+        send_message(connection, signature)
+
         response_data = receive_message(connection)
 
     return cloudpickle.loads(response_data)
