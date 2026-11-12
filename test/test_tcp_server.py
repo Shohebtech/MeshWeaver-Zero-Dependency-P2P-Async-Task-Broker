@@ -1,3 +1,4 @@
+
 import asyncio
 import json
 import unittest
@@ -46,7 +47,7 @@ class TestTCPServer(unittest.IsolatedAsyncioTestCase):
         request = create_message(
             "PING",
             "test_client",
-            "test_server",
+            "node_server",
         )
 
         response = await self.send_message(
@@ -69,13 +70,13 @@ class TestTCPServer(unittest.IsolatedAsyncioTestCase):
             first_message = create_message(
                 "PING",
                 "test_client",
-                "test_server",
+                "node_server",
             )
 
             second_message = create_message(
                 "PING",
                 "test_client",
-                "test_server",
+                "node_server",
             )
 
             first_encoded = (
@@ -118,7 +119,7 @@ class TestTCPServer(unittest.IsolatedAsyncioTestCase):
         request = {
             "message_id": "test-message-1",
             "sender_id": "test_client",
-            "receiver_id": "test_server",
+            "receiver_id": "node_server",
             "type": "HELLO",
             "payload": {},
         }

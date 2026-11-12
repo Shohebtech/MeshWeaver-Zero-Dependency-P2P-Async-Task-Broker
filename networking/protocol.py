@@ -4,12 +4,23 @@ from typing import Any
 import uuid
 
 # Supported message types
+# Supported message types
 MESSAGE_TYPES = {
+    # Networking
     "PING",
     "PONG",
+    "ERROR",
+
+    # Task broker
     "TASK",
     "RESULT",
-    "ERROR",
+
+    # Peer discovery
+    "DISCOVERY",
+    "DISCOVERY_RESPONSE",
+
+    # Load management
+    "LOAD_UPDATE",
 }
 
 
@@ -93,6 +104,9 @@ def validate_message(message: Any) -> None:
         raise ValueError(
             f"Unsupported message type: {message['type']}"
         )
+
+    if not isinstance(message["message_id"], str) or not message["message_id"]:
+        raise ValueError("message_id must be a non-empty string")
 
     if not isinstance(message["sender_id"], str) or not message["sender_id"]:
         raise ValueError("sender_id must be a non-empty string")

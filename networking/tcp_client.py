@@ -1,5 +1,6 @@
 
 import asyncio
+import ssl
 
 from networking.protocol import create_message, encode_message, decode_message
 
@@ -14,8 +15,19 @@ SERVER_ID = "node_server"
 
 async def main():
     try:
+        # Create SSL context and trust our server certificate
+        ssl_context = ssl.create_default_context(
+            cafile="certificates/server-cert.pem"
+        )
+
+        # Establish secure TLS connection
         reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(SERVER_HOST, SERVER_PORT),
+            asyncio.open_connection(
+                SERVER_HOST,
+                SERVER_PORT,
+                ssl=ssl_context,
+                server_hostname="localhost",
+            ),
             timeout=TIMEOUT,
         )
 

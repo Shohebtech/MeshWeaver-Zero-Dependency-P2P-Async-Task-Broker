@@ -1,11 +1,13 @@
 
 import asyncio
+import ssl
 
 from networking.protocol import (
     create_message,
     encode_message,
     decode_message,
 )
+from networking.node import MeshNode
 
 
 HOST = "127.0.0.1"
@@ -14,7 +16,35 @@ PORT = 25000
 NODE_ID = "node_server"
 
 
+# Create the networking integration interface
+node = MeshNode(node_id=NODE_ID)
+
+
+async def handle_ping(message):
+    """
+    Handle PING messages.
+
+    This handler can later be replaced or extended
+    by other modules registering their own handlers.
+    """
+
+    return create_message(
+        message_type="PONG",
+        sender_id=NODE_ID,
+        receiver_id=message["sender_id"],
+        payload={
+            "message": "TCP connection successful",
+        },
+    )
+
+
+# Register the PING handler with MeshNode
+node.register_handler("PING", handle_ping)
+
+
 def create_error_response(receiver_id, error_message):
+    """Create a standard ERROR response."""
+
     return create_message(
         message_type="ERROR",
         sender_id=NODE_ID,
@@ -26,6 +56,8 @@ def create_error_response(receiver_id, error_message):
 
 
 async def handle_client(reader, writer):
+    """Handle multiple messages from a TCP client."""
+
     peer = writer.get_extra_info("peername")
 
     print(f"TCP client connected: {peer}")
@@ -50,26 +82,12 @@ async def handle_client(reader, writer):
             else:
                 print(f"Received from {peer}: {message}")
 
-                message_type = message["type"]
-                sender_id = message["sender_id"]
+               # Delegate message processing to MeshNode
+                response = await node.handle_message(message)
 
-                if message_type == "PING":
-
-                    response = create_message(
-                        message_type="PONG",
-                        sender_id=NODE_ID,
-                        receiver_id=sender_id,
-                        payload={
-                            "message": "TCP connection successful",
-                            "request_message_id": message["message_id"],
-                        },
-                    )
-
-                else:
-                    response = create_error_response(
-                        receiver_id=sender_id,
-                        error_message="Unsupported message type",
-                    )
+                # Attach original request ID to every response
+                if response is not None:
+                    response["payload"]["request_message_id"] = message["message_id"]
 
             # Encode response using the common protocol
             encoded_response = encode_message(response)
@@ -90,11 +108,26 @@ async def handle_client(reader, writer):
         print(f"TCP client disconnected: {peer}")
 
 
+def create_ssl_context():
+    """Create TLS context for the TCP server."""
+
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+
+    ssl_context.load_cert_chain(
+        certfile="certificates/server-cert.pem",
+        keyfile="certificates/server-key.pem",
+    )
+
+    return ssl_context
+
 async def main():
+    ssl_context = create_ssl_context()
+
     server = await asyncio.start_server(
         handle_client,
         HOST,
         PORT,
+        ssl=ssl_context,
     )
 
     addresses = ", ".join(
@@ -105,6 +138,8 @@ async def main():
 
     async with server:
         await server.serve_forever()
+
+
 
 
 if __name__ == "__main__":

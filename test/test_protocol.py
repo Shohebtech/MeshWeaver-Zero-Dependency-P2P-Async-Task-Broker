@@ -75,6 +75,18 @@ class TestProtocol(unittest.TestCase):
             message2["message_id"],
         )
 
+    def test_empty_message_id(self):
+        message = {
+            "message_id": "",
+            "sender_id": "node_1",
+            "receiver_id": "node_2",
+            "type": "PING",
+            "payload": {},
+        }
+
+        with self.assertRaises(ValueError):
+            validate_message(message)
+
 
 if __name__ == "__main__":
     unittest.main()
