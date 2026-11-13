@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="banner mock"><b>Module 4 is a mock adapter.</b> Tasks below are simulated: nothing is serialised, sent or executed. The assigned node is chosen from the real gossip load table, and a task is re-routed if that node goes offline.</div>
+<div class="tiles" id="task-tiles"></div>
+<section class="panel"><h2>Tasks <span class="badge mock">mock</span>
+  <span class="sub"><button class="btn" id="submit-task">Submit demo task</button></span></h2>
+  <div class="tbl-wrap" id="task-table"></div></section>
+{% endblock %}

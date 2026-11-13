@@ -1,0 +1,10 @@
+1|Initial MeshWeaver project architecture and setup|.gitignore requirements.txt config.py modules/__init__.py modules/interfaces.py modules/networking/__init__.py modules/dht/__init__.py modules/gossip/__init__.py modules/task_execution/__init__.py tests/__init__.py docs/ARCHITECTURE.md tools/days.txt tools/commit_day.sh
+2|Add Flask backend and frontend structure|app.py modules/networking/mock_transport.py modules/networking/memory_transport.py modules/dht/mock_directory.py modules/task_execution/mock_executor.py frontend/templates/base.html frontend/static/images/logo.svg
+3|Develop responsive MeshWeaver dashboard|dashboard_api.py frontend/templates/overview.html frontend/templates/mesh.html frontend/templates/gossip.html frontend/templates/tasks.html frontend/templates/network.html frontend/static/css/style.css frontend/static/js/app.js
+4|Implement CPU and RAM monitoring|modules/gossip/load_monitor.py tests/test_load_monitor.py
+5|Develop Gossip Protocol Engine|modules/gossip/engine.py
+6|Add distributed load table and periodic updates|modules/gossip/load_table.py tests/test_load_table.py
+7|Implement heartbeat monitoring and peer failure detection|modules/gossip/heartbeat.py tests/test_heartbeat.py
+8|Add least-loaded node selection and REST APIs|modules/gossip/gossip_api.py tests/test_gossip_api.py
+9|Integrate monitoring charts and module testing|frontend/static/js/charts.js tests/test_engine.py tests/test_integration_udp.py scripts/launch_mesh.py
+10|Finalize project documentation and integration|README.md docs/API.md docs/INTEGRATION.md docs/COMMIT_ROADMAP.md

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="MeshWeaver">
+  <g stroke="#2DD4BF" stroke-width="2.4" stroke-linecap="round" fill="none">
+    <path d="M10 14 L24 8 L38 14 M10 14 L10 34 M38 14 L38 34 M10 34 L24 40 L38 34 M24 8 L24 40 M10 14 L38 34 M38 14 L10 34"/>
+  </g>
+  <g fill="#0B1F3A" stroke="#60A5FA" stroke-width="2.4">
+    <circle cx="24" cy="8" r="4"/><circle cx="10" cy="14" r="4"/><circle cx="38" cy="14" r="4"/>
+    <circle cx="10" cy="34" r="4"/><circle cx="38" cy="34" r="4"/><circle cx="24" cy="40" r="4"/>
+  </g>
+</svg>

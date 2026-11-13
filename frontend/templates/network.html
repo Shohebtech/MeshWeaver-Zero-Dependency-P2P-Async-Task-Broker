@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="tiles" id="net-tiles"></div>
+<div class="grid g2">
+  <section class="panel"><h2>Node health <span class="sub">heartbeat age per peer</span></h2><div class="tbl-wrap" id="health-table"></div></section>
+  <section class="panel"><h2>Network failures</h2><ul class="events" id="failures"></ul></section>
+</div>
+<div class="grid g2">
+  <section class="panel"><h2>Heartbeat events</h2><ul class="events" id="hb-events"></ul></section>
+  <section class="panel"><h2>Communication events</h2><ul class="events" id="comm-events"></ul></section>
+</div>
+<section class="panel"><h2>Transport <span class="badge mock">mock module</span> <span class="badge real">real UDP traffic</span></h2><div id="transport"></div></section>
+{% endblock %}
