@@ -1,0 +1,151 @@
+
+import pytest
+
+from meshweaver.serializer import serialize_task
+from meshweaver.executor import execute_serialized_task
+
+
+def add(a, b):
+    return a + b
+
+
+def divide_by_zero():
+    return 10 / 0
+
+
+def test_execute_serialized_task_success():
+    data = serialize_task(add, (10, 20))
+
+    response = execute_serialized_task(data)
+
+    assert response["status"] == "completed"
+    assert response["result"] == 30
+    assert response["error"] is None
+
+
+def test_execute_serialized_task_failure():
+    data = serialize_task(divide_by_zero)
+
+    response = execute_serialized_task(data)
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert "ZeroDivisionError" in response["error"]
+
+
+def test_execute_invalid_task():
+    response = execute_serialized_task(b"invalid data")
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert response["error"] is not None
+
+def test_deserialization_error_is_reported():
+    response = execute_serialized_task(b"invalid data")
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert response["error"].startswith("Deserialization error:")
+
+def test_execution_error_is_reported():
+    data = serialize_task(divide_by_zero)
+    response = execute_serialized_task(data)
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert response["error"].startswith("Execution error:")
+    assert "ZeroDivisionError" in response["error"]
+
+def test_successful_task_includes_execution_time():
+    """A successful task should report a non-negative duration."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def add(a, b):
+        return a + b
+
+    payload = serialize_task(add, (10, 20))
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "completed"
+    assert response["result"] == 30
+    assert isinstance(response["execution_time"], float)
+    assert response["execution_time"] >= 0
+
+
+def test_failed_task_includes_execution_time():
+    """A failed task should also report its duration."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def failing_task():
+        raise ValueError("Test failure")
+
+    payload = serialize_task(failing_task)
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "failed"
+    assert "ValueError" in response["error"]
+    assert isinstance(response["execution_time"], float)
+    assert response["execution_time"] >= 0
+
+
+def test_invalid_payload_includes_execution_time():
+    """A deserialization failure should report its duration."""
+    from meshweaver.executor import execute_serialized_task
+
+    response = execute_serialized_task(b"invalid payload")
+
+    assert response["status"] == "failed"
+    assert "Deserialization error" in response["error"]
+    assert isinstance(response["execution_time"], float)
+    assert response["execution_time"] >= 0
+
+def test_task_with_no_arguments():
+    """Verify that a task without arguments executes successfully."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def get_message():
+        return "Task completed"
+
+    payload = serialize_task(get_message)
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "completed"
+    assert response["result"] == "Task completed"
+    assert response["error"] is None
+    assert response["execution_time"] >= 0
+
+
+def test_task_with_keyword_arguments():
+    """Verify execution with keyword arguments."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def multiply(a, b=1):
+        return a * b
+
+    payload = serialize_task(multiply, (5,), {"b": 4})
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "completed"
+    assert response["result"] == 20
+    assert response["error"] is None
+
+
+def test_task_function_raises_runtime_error():
+    """Verify that runtime errors are returned in the response."""
+    from meshweaver.serializer import serialize_task
+    from meshweaver.executor import execute_serialized_task
+
+    def failing_task():
+        raise RuntimeError("Intentional failure")
+
+    payload = serialize_task(failing_task)
+    response = execute_serialized_task(payload)
+
+    assert response["status"] == "failed"
+    assert response["result"] is None
+    assert "RuntimeError" in response["error"]
+    assert response["execution_time"] >= 0
