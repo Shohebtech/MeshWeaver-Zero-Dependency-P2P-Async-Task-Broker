@@ -1,0 +1,6 @@
+# TLS certificates
+certificates/server-key.pem
+certificates/
+# Python cache files
+__pycache__/
+*.py[cod]
