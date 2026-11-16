@@ -72,8 +72,10 @@ class LoadMonitor:
             else:
                 backend = "loadavg"
         self.backend = backend
+        if backend == "loadavg" and not hasattr(os, "getloadavg"):
+            raise OSError("load average is not available on this OS")
         if backend == "psutil":
-            psutil.cpu_percent(interval=None)  # prime: first call always returns 0.0
+            psutil.cpu_percent(interval=None)  #type: ignore - prime the counter
         elif backend == "proc":
             self._prev = self._read_stat()
 
@@ -85,8 +87,8 @@ class LoadMonitor:
     def sample(self) -> LoadSample:
         now = time.time()
         if self.backend == "psutil":
-            return LoadSample(_clamp(psutil.cpu_percent(interval=None)),
-                              _clamp(psutil.virtual_memory().percent), now, "psutil")
+            return LoadSample(_clamp(psutil.cpu_percent(interval=None)), #type: ignore
+                              _clamp(psutil.virtual_memory().percent), now, "psutil") #type: ignore
         if self.backend == "proc":
             cur = self._read_stat()
             cpu = 0.0
@@ -97,4 +99,4 @@ class LoadMonitor:
                 ram = parse_meminfo(fh.read()) or 0.0
             return LoadSample(_clamp(cpu), _clamp(ram), now, "proc")
         cores = os.cpu_count() or 1
-        return LoadSample(_clamp(os.getloadavg()[0] * 100.0 / cores), 0.0, now, "loadavg")
+        return LoadSample(_clamp(os.getloadavg()[0] * 100.0 / cores), 0.0, now, "loadavg") #type: ignore
