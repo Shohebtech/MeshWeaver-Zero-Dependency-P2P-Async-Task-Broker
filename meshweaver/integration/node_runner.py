@@ -2,9 +2,8 @@ from typing import Any, Callable, Optional
 
 from meshweaver.dht.node import DHTNode
 from meshweaver.integration.dispatch import Dispatcher
-from meshweaver.integration.gossip_adapter import (
-    GossipTransport, gossip_id, link_departures, neighbor_provider,
-)
+from meshweaver.integration.gossip_adapter import gossip_id, neighbor_provider
+from meshweaver.integration.gossip_bridge import BridgeTransport, routing_for
 from meshweaver.integration.task_channel import TaskServer, task_port
 from meshweaver.integration.task_manager import TaskManager, TaskRecord
 from meshweaver.integration.task_receiver import TaskReceiver
@@ -31,7 +30,7 @@ class MeshNode:
         self.dht: Optional[DHTNode] = None
         self.engine: Any = None
         self.manager: Optional[TaskManager] = None
-        self._gossip_transport: Optional[GossipTransport] = None
+        self._gossip_transport: Optional[BridgeTransport] = None
         self._server: Optional[TaskServer] = None
         self._unlink: Optional[Callable[[], None]] = None
 
@@ -53,16 +52,15 @@ class MeshNode:
         try:
             result = await self.dht.start()
             host, port = self.dht.address
-            self._gossip_transport = GossipTransport(self.dht.protocol.transport)
+            self._gossip_transport = BridgeTransport(self.dht.protocol.transport)
             self.engine = self._gossip_factory(gossip_id(self.dht.node_id), host, port,
                                                self._gossip_transport,
                                                neighbor_provider(self.dht))
             await self.engine.start()
-            self._unlink = link_departures(self.dht, self.engine)
             receiver = TaskReceiver(self._secret, self._execute)
             self._server = TaskServer(receiver.handle, host, task_port(port))
             await self._server.start()
-            self.manager = TaskManager(self.engine, self._secret)
+            self.manager = TaskManager(routing_for(self.engine), self._secret)
             return result
         except BaseException:
             await self.stop()          # undo whatever was already started

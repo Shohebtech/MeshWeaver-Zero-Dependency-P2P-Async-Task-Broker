@@ -11,8 +11,8 @@ from meshweaver.integration.node_runner import MeshNode
 from meshweaver.integration.signing import SigningError, load_secret
 
 # Assumed locations of the other modules. Override them with the flags below.
-DEFAULT_GOSSIP = "gossip:GossipEngine"
-DEFAULT_EXECUTOR = "meshweaver.executer:execute_serialized_task"
+DEFAULT_GOSSIP = "modules.gossip.engine:GossipEngine"
+DEFAULT_EXECUTOR = "meshweaver.executor:execute_serialized_task"
 DEFAULT_SERIALIZER = "meshweaver.serializer:serialize_task"
 
 
@@ -36,6 +36,15 @@ def gossip_factory_for(engine_class: Callable, interval: float) -> Callable:
         return engine_class(node_id, host, port, transport,
                             get_neighbors=neighbors, interval=interval)
     return factory
+
+
+def bridge_factory_for(engine_class: Callable, interval: float) -> Callable:
+    """The factory for the real gossip engine (modules/gossip/engine.py)."""
+    from config import GossipConfig
+    from meshweaver.integration.gossip_bridge import bridge_factory
+    config = GossipConfig.from_env()      # picks up MESHWEAVER_SECRET for signed gossip
+    config.interval = interval
+    return bridge_factory(engine_class, config)
 
 
 def format_record(record: Any) -> str:
@@ -71,7 +80,7 @@ def make_node(args: argparse.Namespace) -> MeshNode:
     engine_class = load_callable(args.gossip)
     execute = load_callable(args.executor)
     bootstrap = [parse_addr(text) for text in args.bootstrap]
-    return MeshNode(secret, execute, gossip_factory_for(engine_class, args.interval),
+    return MeshNode(secret, execute, bridge_factory_for(engine_class, args.interval),
                     ports=range(args.port_base, args.port_base + args.ports),
                     bootstrap=bootstrap)
 
