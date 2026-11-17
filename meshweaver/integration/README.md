@@ -65,10 +65,10 @@ Ports: DHT and gossip use UDP 9000 to 9019, and tasks use TCP 10000 to 10019. St
 
 - Unit tests for each piece: `python -m pytest tests -q`
 - Three terminals on one machine: nodes found each other, shared load, and a task ran on a different node with the correct result.
+- Four terminals on one machine: a 25-second task was sent to a node, that node was stopped, and the task completed on a different node.
 
 ## Not yet verified
 
-- A task surviving the death of the node running it on a live mesh (the re-send logic is unit tested only).
 - The dashboard showing these real nodes (it runs on simulated nodes).
 - TLS on the task channel.
 - Separate machines or Raspberry Pis: discovery scans a port range on one machine, and other machines need `--bootstrap host:port`.
