@@ -1,3 +1,4 @@
+import time 
 import argparse
 import asyncio
 import importlib
@@ -72,6 +73,8 @@ def build_parser() -> argparse.ArgumentParser:
     submit.add_argument("--wait", type=float, default=8.0,
                         help="seconds to wait for load information before sending")
     submit.add_argument("--serializer", default=DEFAULT_SERIALIZER, metavar="MODULE:FUNCTION")
+    submit.add_argument("--slow", type=float, default=0, metavar="SECONDS",
+                        help="send a task that sleeps this long, so you can kill its node")
     return parser
 
 
@@ -107,7 +110,10 @@ async def run(args: argparse.Namespace) -> int:
 
 async def submit(args: argparse.Namespace) -> int:
     serialize = load_callable(args.serializer)
-    task = serialize(math.factorial, (20,))
+    if args.slow > 0:
+        task = serialize(time.sleep, (args.slow,))
+    else:
+        task = serialize(math.factorial, (20,))
     node = make_node(args)
     await node.start()
     try:
